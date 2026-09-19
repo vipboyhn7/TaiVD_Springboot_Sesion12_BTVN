@@ -1,0 +1,16 @@
+spring:
+    application:
+        name: btvnss12
+    datasource:
+        driver-class-name: org.postgresql.Driver
+        password: 123
+        url: jdbc:postgresql://localhost:5432/btvn?currentSchema=ss12
+        username: postgres
+    jpa:
+        hibernate:
+            ddl-auto: update
+        properties:
+            hibernate:
+                dialect: org.hibernate.dialect.PostgreSQLDialect
+                format_sql: true
+        show-sql: true
