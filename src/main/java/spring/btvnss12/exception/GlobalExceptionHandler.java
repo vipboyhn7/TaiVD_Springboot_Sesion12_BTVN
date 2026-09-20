@@ -17,6 +17,7 @@ import org.springframework.web.bind.annotation.ExceptionHandler;
 import org.springframework.web.bind.annotation.RestControllerAdvice;
 import org.springframework.web.method.annotation.MethodArgumentTypeMismatchException;
 import org.springframework.web.servlet.NoHandlerFoundException;
+import org.springframework.web.servlet.resource.NoResourceFoundException;
 
 import java.util.LinkedHashMap;
 import java.util.Map;
@@ -31,14 +32,18 @@ import java.util.Map;
 public class GlobalExceptionHandler {
 
 
-    /** Lỗi nghiệp vụ do mình chủ động throw. */
+    /**
+     * Lỗi nghiệp vụ do mình chủ động throw.
+     */
     @ExceptionHandler(AppException.class)
     public ResponseEntity<ErrorResponse> handleAppException(AppException ex, HttpServletRequest request) {
         log.warn("AppException: {} - {}", ex.getStatus(), ex.getMessage());
         return build(ex.getStatus(), ex.getMessage(), request);
     }
 
-    /** @Valid trên @RequestBody thất bại. */
+    /**
+     * @Valid trên @RequestBody thất bại.
+     */
     @ExceptionHandler(MethodArgumentNotValidException.class)
     public ResponseEntity<ErrorResponse> handleValidation(MethodArgumentNotValidException ex,
                                                           HttpServletRequest request) {
@@ -49,12 +54,15 @@ public class GlobalExceptionHandler {
                 .forEach(ge -> errors.putIfAbsent(ge.getObjectName(), ge.getDefaultMessage()));
 
         HttpStatus status = HttpStatus.BAD_REQUEST;
+        log.warn("Validation error: {}", errors);
         return ResponseEntity.status(status).body(ErrorResponse.of(
                 status.value(), status.getReasonPhrase(), "Dữ liệu không hợp lệ",
                 request.getRequestURI(), errors));
     }
 
-    /** @Validated trên @RequestParam / @PathVariable thất bại. */
+    /**
+     * @Validated trên @RequestParam / @PathVariable thất bại.
+     */
     @ExceptionHandler(ConstraintViolationException.class)
     public ResponseEntity<ErrorResponse> handleConstraintViolation(ConstraintViolationException ex,
                                                                    HttpServletRequest request) {
@@ -63,26 +71,33 @@ public class GlobalExceptionHandler {
                 errors.putIfAbsent(String.valueOf(v.getPropertyPath()), v.getMessage()));
 
         HttpStatus status = HttpStatus.BAD_REQUEST;
+        log.warn("Validation error: {}", errors);
         return ResponseEntity.status(status).body(ErrorResponse.of(
                 status.value(), status.getReasonPhrase(), "Dữ liệu không hợp lệ",
                 request.getRequestURI(), errors));
     }
 
-    /** Body JSON sai cú pháp hoặc sai kiểu dữ liệu. */
+    /**
+     * Body JSON sai cú pháp hoặc sai kiểu dữ liệu.
+     */
     @ExceptionHandler(HttpMessageNotReadableException.class)
     public ResponseEntity<ErrorResponse> handleNotReadable(HttpMessageNotReadableException ex,
-                                                          HttpServletRequest request) {
+                                                           HttpServletRequest request) {
         return build(HttpStatus.BAD_REQUEST, "Body request không đọc được hoặc sai định dạng JSON", request);
     }
 
-    /** Thiếu query param bắt buộc. */
+    /**
+     * Thiếu query param bắt buộc.
+     */
     @ExceptionHandler(MissingServletRequestParameterException.class)
     public ResponseEntity<ErrorResponse> handleMissingParam(MissingServletRequestParameterException ex,
                                                             HttpServletRequest request) {
         return build(HttpStatus.BAD_REQUEST, "Thiếu tham số bắt buộc: " + ex.getParameterName(), request);
     }
 
-    /** Param sai kiểu, ví dụ /users/abc trong khi id là Long. */
+    /**
+     * Param sai kiểu, ví dụ /users/abc trong khi id là Long.
+     */
     @ExceptionHandler(MethodArgumentTypeMismatchException.class)
     public ResponseEntity<ErrorResponse> handleTypeMismatch(MethodArgumentTypeMismatchException ex,
                                                             HttpServletRequest request) {
@@ -90,21 +105,27 @@ public class GlobalExceptionHandler {
                 "Tham số '%s' có giá trị không hợp lệ: %s".formatted(ex.getName(), ex.getValue()), request);
     }
 
-    /** Sai HTTP method, ví dụ GET vào endpoint chỉ nhận POST. */
+    /**
+     * Sai HTTP method, ví dụ GET vào endpoint chỉ nhận POST.
+     */
     @ExceptionHandler(HttpRequestMethodNotSupportedException.class)
     public ResponseEntity<ErrorResponse> handleMethodNotSupported(HttpRequestMethodNotSupportedException ex,
-                                                                   HttpServletRequest request) {
+                                                                  HttpServletRequest request) {
         return build(HttpStatus.METHOD_NOT_ALLOWED, "Method không được hỗ trợ: " + ex.getMethod(), request);
     }
 
-    /** Không có endpoint tương ứng. */
+    /**
+     * Không có endpoint tương ứng.
+     */
     @ExceptionHandler(NoHandlerFoundException.class)
     public ResponseEntity<ErrorResponse> handleNoHandler(NoHandlerFoundException ex,
                                                          HttpServletRequest request) {
         return build(HttpStatus.NOT_FOUND, "Không tìm thấy endpoint: " + request.getRequestURI(), request);
     }
 
-    /** Vi phạm ràng buộc DB: unique, foreign key, not null... */
+    /**
+     * Vi phạm ràng buộc DB: unique, foreign key, not null...
+     */
     @ExceptionHandler(DataIntegrityViolationException.class)
     public ResponseEntity<ErrorResponse> handleDataIntegrity(DataIntegrityViolationException ex,
                                                              HttpServletRequest request) {
@@ -112,13 +133,26 @@ public class GlobalExceptionHandler {
         return build(HttpStatus.CONFLICT, "Dữ liệu vi phạm ràng buộc trong cơ sở dữ liệu", request);
     }
 
-    /** Sai đối số khi gọi hàm, thường do logic kiểm tra đầu vào. */
+    /**
+     * Sai đối số khi gọi hàm, thường do logic kiểm tra đầu vào.
+     */
     @ExceptionHandler({IllegalArgumentException.class, IllegalStateException.class})
     public ResponseEntity<ErrorResponse> handleIllegal(RuntimeException ex, HttpServletRequest request) {
         return build(HttpStatus.BAD_REQUEST, ex.getMessage(), request);
     }
 
-    /** Lưới an toàn cuối cùng: mọi lỗi chưa được xử lý ở trên. */
+    /**
+     * Sai đường dẫn
+     */
+    @ExceptionHandler(NoResourceFoundException.class)
+    public ResponseEntity<ErrorResponse> handleNoResourceFound(NoResourceFoundException ex, HttpServletRequest request) {
+        log.warn("Không tìm thấy tài nguyên tại {}", request.getRequestURI(), ex);
+        return build(HttpStatus.NOT_FOUND, "Đường dẫn không hợp lệ", request);
+    }
+
+    /**
+     * Lưới an toàn cuối cùng: mọi lỗi chưa được xử lý ở trên.
+     */
     @ExceptionHandler(Exception.class)
     public ResponseEntity<ErrorResponse> handleUnexpected(Exception ex, HttpServletRequest request) {
         log.error("Lỗi không mong đợi tại {}", request.getRequestURI(), ex);

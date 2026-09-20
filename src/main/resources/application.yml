@@ -1,6 +1,21 @@
+logging:
+    level:
+        org:
+            hibernate:
+                SQL: DEBUG
+                orm:
+                    jdbc:
+                        bind: TRACE
+        spring:
+            btvnss12: DEBUG
 spring:
     application:
         name: btvnss12
+    data:
+        web:
+            pageable:
+                default-page-size: 10
+                max-page-size: 100
     datasource:
         driver-class-name: org.postgresql.Driver
         password: 123
@@ -11,6 +26,5 @@ spring:
             ddl-auto: update
         properties:
             hibernate:
-                dialect: org.hibernate.dialect.PostgreSQLDialect
                 format_sql: true
         show-sql: true

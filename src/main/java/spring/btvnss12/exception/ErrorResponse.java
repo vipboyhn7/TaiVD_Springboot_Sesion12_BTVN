@@ -1,6 +1,7 @@
 package spring.btvnss12.exception;
 
 import com.fasterxml.jackson.annotation.JsonInclude;
+import lombok.experimental.FieldDefaults;
 
 import java.time.LocalDateTime;
 import java.util.Map;
